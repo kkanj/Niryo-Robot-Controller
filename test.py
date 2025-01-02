@@ -15,7 +15,7 @@ def move_robot():
 
     # Verify learning mode is off
     learning_mode_status = rospy.wait_for_message('/niryo_one/learning_mode', Bool)
-    print("Learning Mode: " + learning_mode_status)
+    print(learning_mode_status)
     if learning_mode_status.data:
         rospy.logwarn("Failed to disable learning mode. Please disable it manually.")
     

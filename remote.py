@@ -8,7 +8,7 @@ import actionlib
 from niryo_one_msgs.msg import ToolAction, ToolGoal
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
-MOVE_SPEED = 0.01
+MOVE_SPEED = 0.07
 
 # Key bindings for each joint (1-6)
 MOVE_BINDINGS = {

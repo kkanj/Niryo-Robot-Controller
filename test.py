@@ -2,7 +2,7 @@ import rospy
 from geometry_msgs.msg import Twist
 
 def move_robot():
-    rospy.init_node('test_movement')
+    rospy.init_node('test_movement', anonymous=True)
     pub = rospy.Publisher('/niryo_one/cmd_vel', Twist, queue_size=10)
     rate = rospy.Rate(1)  # 1 Hz
 
@@ -28,12 +28,13 @@ def move_robot():
             twist.linear.z = movement[2]
             twist.angular.z = movement[3]
             pub.publish(twist)
-            print("Published movement: {}".format(movement))
+            rospy.loginfo("Published movement: {}".format(movement))
             rate.sleep()
 
         # Stop the robot after the movements
         pub.publish(Twist())
-        print("Test completed. Robot stopped.")
+        rospy.loginfo("Test completed. Robot stopped.")
+        rospy.sleep(1)  # Ensure the stop message is processed
     except rospy.ROSInterruptException:
         pass
 

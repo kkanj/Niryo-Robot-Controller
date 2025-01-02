@@ -35,6 +35,7 @@ def main():
     # Disable learning mode
     learning_mode_pub.publish(Bool(data=False))
     rospy.sleep(1)  # Give some time for the mode to change
+    rospy.loginfo("Learning mode disabled")
 
     print("Use 'WASDQE' to control the robot. Press 'x' to exit.")
 
@@ -50,17 +51,20 @@ def main():
                 twist.linear.z = z * 0.1
                 twist.angular.z = yaw * 0.1
                 pub.publish(twist)
+                rospy.loginfo("Published twist: {}".format(twist))
             elif key == 'x':  # Exit
                 print("Exiting...")
                 break
             else:
                 # Stop robot if invalid key pressed
                 pub.publish(Twist())
+                rospy.loginfo("Published stop twist")
             rate.sleep()
     except Exception as e:
         print("An error occurred: {}".format(e))
     finally:
         pub.publish(Twist())  # Stop the robot when exiting
+        rospy.loginfo("Published stop twist on exit")
 
 if __name__ == '__main__':
     main()

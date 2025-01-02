@@ -1,5 +1,6 @@
 import rospy
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Bool
 import sys
 import termios
 import tty
@@ -28,7 +29,12 @@ def get_key():
 def main():
     rospy.init_node('remote_control')
     pub = rospy.Publisher('/niryo_one/cmd_vel', Twist, queue_size=10)
+    learning_mode_pub = rospy.Publisher('/niryo_one/learning_mode', Bool, queue_size=10)
     rate = rospy.Rate(10)
+
+    # Disable learning mode
+    learning_mode_pub.publish(Bool(data=False))
+    rospy.sleep(1)  # Give some time for the mode to change
 
     print("Use 'WASDQE' to control the robot. Press 'x' to exit.")
 

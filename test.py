@@ -9,8 +9,15 @@ def move_robot():
     rate = rospy.Rate(1)  # 1 Hz
 
     # Disable learning mode
+    rospy.loginfo("Disabling learning mode...")
     learning_mode_pub.publish(Bool(data=False))
-    rospy.sleep(1)  # Give some time for the mode to change
+    rospy.sleep(2)  # Give some time for the mode to change
+
+    # Verify learning mode is off
+    learning_mode_status = rospy.wait_for_message('/niryo_one/learning_mode', Bool)
+    if learning_mode_status.data:
+        rospy.logwarn("Failed to disable learning mode. Please disable it manually.")
+        return
 
     # Define a simple joint trajectory
     trajectory = JointTrajectory()

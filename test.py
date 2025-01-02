@@ -1,10 +1,16 @@
 import rospy
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from std_msgs.msg import Bool
 
 def move_robot():
     rospy.init_node('test_movement', anonymous=True)
     pub = rospy.Publisher('/niryo_one_follow_joint_trajectory_controller/command', JointTrajectory, queue_size=10)
+    learning_mode_pub = rospy.Publisher('/niryo_one/learning_mode', Bool, queue_size=10)
     rate = rospy.Rate(1)  # 1 Hz
+
+    # Disable learning mode
+    learning_mode_pub.publish(Bool(data=False))
+    rospy.sleep(1)  # Give some time for the mode to change
 
     # Define a simple joint trajectory
     trajectory = JointTrajectory()

@@ -1,20 +1,14 @@
-import rospy
-from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import sys
 import termios
 import tty
+import rospy
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+# Example gripper service messages (adjust to match your setup!)
+from niryo_one_msgs.srv import SetInt, SetIntRequest
 
-# Movement increment per key press (repeated at ~10 Hz). 
-# Feel free to adjust this value if you need slower or faster movement.
-MOVE_SPEED = 0.07
+MOVE_SPEED = 0.01
 
-# Key bindings for each joint (joint_1 through joint_6)
-# Joint 1: w / s
-# Joint 2: a / d
-# Joint 3: e / q
-# Joint 4: r / f
-# Joint 5: t / g
-# Joint 6: y / h
+# Key bindings for each joint (1-6)
 MOVE_BINDINGS = {
     'w': ( MOVE_SPEED,      0,          0,          0,          0,          0 ),
     's': (-MOVE_SPEED,      0,          0,          0,          0,          0 ),
@@ -40,14 +34,33 @@ def get_key():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return key
 
+def toggle_gripper(currently_open):
+    """
+    Toggles between open_gripper and close_gripper services.
+    Adjust service names and request types to match your actual setup.
+    """
+    if currently_open:
+        rospy.loginfo("Closing gripper...")
+        rospy.wait_for_service('/niryo_one/close_gripper')
+        close_srv = rospy.ServiceProxy('/niryo_one/close_gripper', SetInt)
+        close_srv(SetIntRequest(value=1))  # Adjust request as needed
+        return False
+    else:
+        rospy.loginfo("Opening gripper...")
+        rospy.wait_for_service('/niryo_one/open_gripper')
+        open_srv = rospy.ServiceProxy('/niryo_one/open_gripper', SetInt)
+        open_srv(SetIntRequest(value=1))   # Adjust request as needed
+        return True
+
 def main():
     rospy.init_node('remote_trajectory_control', anonymous=True)
     pub = rospy.Publisher('/niryo_one_follow_joint_trajectory_controller/command',
                           JointTrajectory, queue_size=10)
-    rate = rospy.Rate(10)  # 10 Hz
+    rate = rospy.Rate(10)
 
     # Initial joint positions
     joint_values = [0, 0, 0, 0, 0, 0]
+    gripper_open = False
 
     print("Use these keys to move each joint (1-6):")
     print(" Joint 1: w / s")
@@ -56,30 +69,36 @@ def main():
     print(" Joint 4: r / f")
     print(" Joint 5: t / g")
     print(" Joint 6: y / h")
+    print("Press SPACE to toggle the gripper.")
     print("Press 'x' to exit.")
 
     while not rospy.is_shutdown():
         key = get_key()
-        if key in MOVE_BINDINGS:
+
+        # Toggle gripper using SPACE
+        if key == ' ':
+            gripper_open = toggle_gripper(gripper_open)
+
+        elif key in MOVE_BINDINGS:
             deltas = MOVE_BINDINGS[key]
             for i in range(len(joint_values)):
                 joint_values[i] += deltas[i]
 
-            # Create trajectory message
+            # Build trajectory message
             traj = JointTrajectory()
             traj.joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
-
             point = JointTrajectoryPoint()
             point.positions = joint_values
-            # Increase this duration if you want the robot to move more slowly to each new position
-            point.time_from_start = rospy.Duration(1)
-
+            point.time_from_start = rospy.Duration(1)  # Slower movement with a 1s duration
             traj.points.append(point)
+
             pub.publish(traj)
             rospy.loginfo("Published joint trajectory: {}".format(traj))
+
         elif key == 'x':
             print("Exiting...")
             break
+
         rate.sleep()
 
 if __name__ == '__main__':

@@ -4,12 +4,30 @@ import sys
 import termios
 import tty
 
-# Keys to move some joints (example: joint 1 and joint 2)
+# Movement increment per key press (repeated at ~10 Hz). 
+# Feel free to adjust this value if you need slower or faster movement.
+MOVE_SPEED = 0.01
+
+# Key bindings for each joint (joint_1 through joint_6)
+# Joint 1: w / s
+# Joint 2: a / d
+# Joint 3: e / q
+# Joint 4: r / f
+# Joint 5: t / g
+# Joint 6: y / h
 MOVE_BINDINGS = {
-    'w': (0.3, 0),   # Increase joint_1 angle
-    's': (-0.3, 0),  # Decrease joint_1 angle
-    'a': (0, 0.3),   # Increase joint_2 angle
-    'd': (0, -0.3)   # Decrease joint_2 angle
+    'w': ( MOVE_SPEED,      0,          0,          0,          0,          0 ),
+    's': (-MOVE_SPEED,      0,          0,          0,          0,          0 ),
+    'a': (0,                MOVE_SPEED, 0,          0,          0,          0 ),
+    'd': (0,               -MOVE_SPEED, 0,          0,          0,          0 ),
+    'e': (0,                0,         MOVE_SPEED,  0,          0,          0 ),
+    'q': (0,                0,        -MOVE_SPEED,  0,          0,          0 ),
+    'r': (0,                0,          0,         MOVE_SPEED,  0,          0 ),
+    'f': (0,                0,          0,        -MOVE_SPEED,  0,          0 ),
+    't': (0,                0,          0,          0,         MOVE_SPEED,  0 ),
+    'g': (0,                0,          0,          0,        -MOVE_SPEED,  0 ),
+    'y': (0,                0,          0,          0,          0,         MOVE_SPEED),
+    'h': (0,                0,          0,          0,          0,        -MOVE_SPEED)
 }
 
 def get_key():
@@ -26,19 +44,26 @@ def main():
     rospy.init_node('remote_trajectory_control', anonymous=True)
     pub = rospy.Publisher('/niryo_one_follow_joint_trajectory_controller/command',
                           JointTrajectory, queue_size=10)
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(10)  # 10 Hz
 
     # Initial joint positions
     joint_values = [0, 0, 0, 0, 0, 0]
 
-    print("Use 'WASD' to move joints 1 and 2. Press 'x' to exit.")
+    print("Use these keys to move each joint (1-6):")
+    print(" Joint 1: w / s")
+    print(" Joint 2: a / d")
+    print(" Joint 3: e / q")
+    print(" Joint 4: r / f")
+    print(" Joint 5: t / g")
+    print(" Joint 6: y / h")
+    print("Press 'x' to exit.")
 
     while not rospy.is_shutdown():
         key = get_key()
         if key in MOVE_BINDINGS:
-            delta_j1, delta_j2 = MOVE_BINDINGS[key]
-            joint_values[0] += delta_j1
-            joint_values[1] += delta_j2
+            deltas = MOVE_BINDINGS[key]
+            for i in range(len(joint_values)):
+                joint_values[i] += deltas[i]
 
             # Create trajectory message
             traj = JointTrajectory()
@@ -46,6 +71,7 @@ def main():
 
             point = JointTrajectoryPoint()
             point.positions = joint_values
+            # Increase this duration if you want the robot to move more slowly to each new position
             point.time_from_start = rospy.Duration(1)
 
             traj.points.append(point)

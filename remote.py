@@ -6,7 +6,7 @@ import tty
 
 # Movement increment per key press (repeated at ~10 Hz). 
 # Feel free to adjust this value if you need slower or faster movement.
-MOVE_SPEED = 0.01
+MOVE_SPEED = 0.07
 
 # Key bindings for each joint (joint_1 through joint_6)
 # Joint 1: w / s

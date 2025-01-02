@@ -37,7 +37,7 @@ def main():
             key = get_key()
             if key in MOVE_BINDINGS:
                 x, y, z, yaw = MOVE_BINDINGS[key]
-                print(f"Key pressed: {key}, Movement: {x}, {y}, {z}, {yaw}")
+                print("Key pressed: {}, Movement: {}, {}, {}, {}".format(key, x, y, z, yaw))
                 twist = Twist()
                 twist.linear.x = x * 0.1
                 twist.linear.y = y * 0.1
@@ -52,7 +52,7 @@ def main():
                 pub.publish(Twist())
             rate.sleep()
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print("An error occurred: {}".format(e))
     finally:
         pub.publish(Twist())  # Stop the robot when exiting
 

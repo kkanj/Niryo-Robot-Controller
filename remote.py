@@ -1,22 +1,18 @@
 import rospy
-from geometry_msgs.msg import Twist
-from std_msgs.msg import Bool
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import sys
 import termios
 import tty
 
-# Key bindings for movement
+# Keys to move some joints (example: joint 1 and joint 2)
 MOVE_BINDINGS = {
-    'w': (1, 0, 0, 0),  # Forward
-    's': (-1, 0, 0, 0), # Backward
-    'a': (0, 1, 0, 0),  # Left
-    'd': (0, -1, 0, 0), # Right
-    'q': (0, 0, 1, 0),  # Up
-    'e': (0, 0, -1, 0), # Down
+    'w': (0.3, 0),   # Increase joint_1 angle
+    's': (-0.3, 0),  # Decrease joint_1 angle
+    'a': (0, 0.3),   # Increase joint_2 angle
+    'd': (0, -0.3)   # Decrease joint_2 angle
 }
 
 def get_key():
-    """Capture key press from terminal."""
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
     try:
@@ -27,52 +23,38 @@ def get_key():
     return key
 
 def main():
-    rospy.init_node('remote_control')
-    pub = rospy.Publisher('/niryo_one/cmd_vel', Twist, queue_size=10)
-    learning_mode_pub = rospy.Publisher('/niryo_one/learning_mode', Bool, queue_size=10)
+    rospy.init_node('remote_trajectory_control', anonymous=True)
+    pub = rospy.Publisher('/niryo_one_follow_joint_trajectory_controller/command',
+                          JointTrajectory, queue_size=10)
     rate = rospy.Rate(10)
 
-    # Disable learning mode
-    rospy.loginfo("Disabling learning mode...")
-    learning_mode_pub.publish(Bool(data=False))
-    rospy.sleep(2)  # Give some time for the mode to change
+    # Initial joint positions
+    joint_values = [0, 0, 0, 0, 0, 0]
 
-    # Verify learning mode is off
-    learning_mode_status = rospy.wait_for_message('/niryo_one/learning_mode', Bool)
-    if learning_mode_status.data:
-        rospy.logwarn("Failed to disable learning mode. Please disable it manually.")
-        return
+    print("Use 'WASD' to move joints 1 and 2. Press 'x' to exit.")
 
-    rospy.loginfo("Learning mode disabled")
+    while not rospy.is_shutdown():
+        key = get_key()
+        if key in MOVE_BINDINGS:
+            delta_j1, delta_j2 = MOVE_BINDINGS[key]
+            joint_values[0] += delta_j1
+            joint_values[1] += delta_j2
 
-    print("Use 'WASDQE' to control the robot. Press 'x' to exit.")
+            # Create trajectory message
+            traj = JointTrajectory()
+            traj.joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
 
-    try:
-        while not rospy.is_shutdown():
-            key = get_key()
-            if key in MOVE_BINDINGS:
-                x, y, z, yaw = MOVE_BINDINGS[key]
-                print("Key pressed: {}, Movement: {}, {}, {}, {}".format(key, x, y, z, yaw))
-                twist = Twist()
-                twist.linear.x = x * 0.1
-                twist.linear.y = y * 0.1
-                twist.linear.z = z * 0.1
-                twist.angular.z = yaw * 0.1
-                pub.publish(twist)
-                rospy.loginfo("Published twist: {}".format(twist))
-            elif key == 'x':  # Exit
-                print("Exiting...")
-                break
-            else:
-                # Stop robot if invalid key pressed
-                pub.publish(Twist())
-                rospy.loginfo("Published stop twist")
-            rate.sleep()
-    except Exception as e:
-        print("An error occurred: {}".format(e))
-    finally:
-        pub.publish(Twist())  # Stop the robot when exiting
-        rospy.loginfo("Published stop twist on exit")
+            point = JointTrajectoryPoint()
+            point.positions = joint_values
+            point.time_from_start = rospy.Duration(1)
+
+            traj.points.append(point)
+            pub.publish(traj)
+            rospy.loginfo("Published joint trajectory: {}".format(traj))
+        elif key == 'x':
+            print("Exiting...")
+            break
+        rate.sleep()
 
 if __name__ == '__main__':
     main()

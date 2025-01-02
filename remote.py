@@ -2,9 +2,11 @@ import sys
 import termios
 import tty
 import rospy
+import actionlib
+
+# Import your Niryo tool action messages (adjust if needed)
+from niryo_one_msgs.msg import ToolAction, ToolGoal
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-# Example gripper service messages (adjust to match your setup!)
-from niryo_one_msgs.srv import SetInt, SetIntRequest
 
 MOVE_SPEED = 0.01
 
@@ -34,28 +36,40 @@ def get_key():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return key
 
-def toggle_gripper(currently_open):
+def toggle_gripper_action(currently_open):
     """
-    Toggles between open_gripper and close_gripper services.
-    Adjust service names and request types to match your actual setup.
+    Toggles the gripper via the /niryo_one/tool_action action server.
+    Adjust the 'goal.action' or other fields if your Niryo version differs.
     """
+    # Action client for the Niryo One tool action
+    client = actionlib.SimpleActionClient('/niryo_one/tool_action', ToolAction)
+    rospy.loginfo("Waiting for /niryo_one/tool_action server...")
+    client.wait_for_server()
+
+    # Prepare the goal (adjust fields if needed)
+    goal = ToolGoal()
     if currently_open:
-        rospy.loginfo("Closing gripper...")
-        rospy.wait_for_service('/niryo_one/close_gripper')
-        close_srv = rospy.ServiceProxy('/niryo_one/close_gripper', SetInt)
-        close_srv(SetIntRequest(value=1))  # Adjust request as needed
-        return False
+        rospy.loginfo("Closing gripper via tool action...")
+        goal.action = 2  # Example: 2 might mean "close"
     else:
-        rospy.loginfo("Opening gripper...")
-        rospy.wait_for_service('/niryo_one/open_gripper')
-        open_srv = rospy.ServiceProxy('/niryo_one/open_gripper', SetInt)
-        open_srv(SetIntRequest(value=1))   # Adjust request as needed
-        return True
+        rospy.loginfo("Opening gripper via tool action...")
+        goal.action = 1  # Example: 1 might mean "open"
+    
+    # Send goal and wait
+    client.send_goal(goal)
+    client.wait_for_result()
+    rospy.loginfo("Gripper action complete.")
+
+    # Toggle state
+    return not currently_open
 
 def main():
     rospy.init_node('remote_trajectory_control', anonymous=True)
+
+    # Joint trajectory publisher (just like before)
     pub = rospy.Publisher('/niryo_one_follow_joint_trajectory_controller/command',
-                          JointTrajectory, queue_size=10)
+                          JointTrajectory,
+                          queue_size=10)
     rate = rospy.Rate(10)
 
     # Initial joint positions
@@ -69,7 +83,7 @@ def main():
     print(" Joint 4: r / f")
     print(" Joint 5: t / g")
     print(" Joint 6: y / h")
-    print("Press SPACE to toggle the gripper.")
+    print("Press SPACE to toggle the gripper (via /niryo_one/tool_action).")
     print("Press 'x' to exit.")
 
     while not rospy.is_shutdown():
@@ -77,23 +91,24 @@ def main():
 
         # Toggle gripper using SPACE
         if key == ' ':
-            gripper_open = toggle_gripper(gripper_open)
+            # Toggle state using the Action server
+            gripper_open = toggle_gripper_action(gripper_open)
 
         elif key in MOVE_BINDINGS:
             deltas = MOVE_BINDINGS[key]
             for i in range(len(joint_values)):
                 joint_values[i] += deltas[i]
 
-            # Build trajectory message
+            # Create & publish the trajectory
             traj = JointTrajectory()
             traj.joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
             point = JointTrajectoryPoint()
             point.positions = joint_values
-            point.time_from_start = rospy.Duration(1)  # Slower movement with a 1s duration
+            point.time_from_start = rospy.Duration(1)  # 1 second to reach new positions
             traj.points.append(point)
 
             pub.publish(traj)
-            rospy.loginfo("Published joint trajectory: {}".format(traj))
+            rospy.loginfo("Published joint trajectory: %s", traj)
 
         elif key == 'x':
             print("Exiting...")

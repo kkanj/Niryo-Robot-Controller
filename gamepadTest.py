@@ -6,7 +6,7 @@ def test_gamepad():
     while True:
         events = get_gamepad()
         for event in events:
-            print(f"Event code: {event.code}, State: {event.state}")
+            print("Event code: {}, State: {}".format(event.code, event.state))
         time.sleep(0.1)
 
 if __name__ == "__main__":

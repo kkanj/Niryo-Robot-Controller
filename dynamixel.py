@@ -14,7 +14,7 @@ port_handler = PortHandler(PORT_NAME)
 packet_handler = PacketHandler(1.0)
 
 # Initialize ROS node
-rospy.init_node('change_motor_id')
+rospy.init_node('ping_motor')
 
 # Open the port
 if not port_handler.openPort():
@@ -49,31 +49,6 @@ current_id = get_motor_id(CURRENT_MOTOR_ID)
 if current_id is None:
     rospy.logerr("Could not find motor with ID {}".format(CURRENT_MOTOR_ID))
     exit()
-
-# Change the motor ID to a new one
-def change_motor_id(old_motor_id, new_motor_id):
-    try:
-        # Change the motor ID by writing to the ID register (address 0x03)
-        dxl_comm_result, dxl_error = packet_handler.write1ByteTxRx(port_handler, old_motor_id, 0x03, new_motor_id)
-        if dxl_comm_result != COMM_SUCCESS:
-            rospy.logerr("Failed to change motor ID: {}".format(packet_handler.getTxRxResult(dxl_comm_result)))
-        elif dxl_error != 0:
-            rospy.logerr("Error while changing motor ID: {}".format(packet_handler.getRxPacketError(dxl_error)))
-        else:
-            rospy.loginfo("Motor ID changed successfully to {}".format(new_motor_id))
-            return True
-    except Exception as e:
-        rospy.logerr("Error changing motor ID: {}".format(e))
-        return False
-
-# Change the motor ID to the new one
-if change_motor_id(CURRENT_MOTOR_ID, NEW_MOTOR_ID):
-    # Verify the change by pinging the motor with the new ID
-    new_motor_id_check = get_motor_id(NEW_MOTOR_ID)
-    if new_motor_id_check:
-        rospy.loginfo("Motor ID has been successfully updated to {}".format(NEW_MOTOR_ID))
-    else:
-        rospy.logerr("Failed to verify the new motor ID.")
 
 # Close the port
 port_handler.closePort()
